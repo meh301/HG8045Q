@@ -1,0 +1,2 @@
+# HG8045Q
+Huawei HG8045Q NAND Dumps
