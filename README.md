@@ -1,7 +1,7 @@
-# HG8045Q
+# PWNED: HG8045Q
 This is an ongoing project aimed at reverse engineering modern Huawei ONT implementations to evaluate their security.
 
-The target hardware can be commonly found distributed by Japanese ISP [So-Net](https://www.so-net.ne.jp) under the [Nuro](https://www.nuro.jp/hikari/) name.
+The target hardware in this publication is commonly distributed by Japanese ISP [So-Net](https://www.so-net.ne.jp) under the [Nuro](https://www.nuro.jp/hikari/) name.
 
 The Huawei Echolife HG8045Q and similar variants is a 2gbps-capable (1gbps upload) GPON modem & router with many of its features locked down by the provider, with the most important of these *unavailable* features being Bridge mode. Furthermore, although the router is capable of speeds in excess of 1gbps on the fibre ONT input, none of its RJ45 ports are rated for anything higher than 1gbps. This is somewhat a shame for more advanced users who might want to use their own higher performance firewalls like pfsense or other deployments. The official manual outlining its features (in Japanese) can be found [here](https://www.nuro.jp/pdf/device/manual_HG8045Q.pdf).
 
@@ -107,7 +107,7 @@ OK
 
 Starting kernel ...
 ```
-#### Dumping the NAND
+#### Level 3: Dumping the NAND
 I accidentally shorted 12v to ground, immediately killing the router mainboard soon after accessing the UART port. To salvage what was left of the board, I decided to order some NAND flash dumping hardware (I didn't have anything that could do TSOP48 NAND chips) and dump the NAND of the HG8045Q.
 
 In the case of this mainboard, the NAND flash used was [Spansion S34ML01G100TF100 SLC 128MB NAND](https://www.kynix.com/Detail/589387/S34ML01G100TF100.html). *(Judging from hex readouts of the flash dump, this chip is most probably not the only one in use as the filesystem has a list of compatible chips integrated.)*
@@ -260,16 +260,390 @@ DECIMAL       HEXADECIMAL     DESCRIPTION
 20161273      0x133A2F9       mcrypt 2.5 encrypted data, algorithm: "1l", keysize: 3436 bytes, mode: "m",
 20672560      0x13B7030       gzip compressed data, maximum compression, from Unix, last modified: 1970-01-01 00:00:30 (bogus date)
 ```
+Sadly, I do not have a lot of experience with extracting the data from the NAND flash, especially as the filesystem in use is UBIFS. I have tried several things to mount the filesystem but am still struggling with it. If you have any suggestions, I would be more than glad to listen to them. Feel free to send an email to **alex *[at]* kenchitaru.studio**. It seems that the offsets are still wrong. I also get a CRC error at certain points but I do not think it is due to a bad dump as reading from the chip results in the exact same file everytime.
+
+#### Level 3.1: Hex analysis of the NAND dump
 
 Going through the NAND dump with a hex editor revealed some interesting strings:
 ```
-admin_iksyomuac13 iksyomuac13_admin_3204 HG8045-409E-bg b9tt6hre HG8045-409E-a b9tt6hre
-
 0x000000100000-0x000008000000 : "mtd=1"
 
 mtdparts=hinand:0x100000(startcode)ro,0x7f00000(ubifs),-(reserved)
 ```
+It seems this is the mapping of the of the NAND which does not align with what binwalk detected. I will look into using this table to extract the filesystem in the future.
 
-Sadly, I do not have a lot of experience with extracting the data from the NAND flash, especially as the filesystem in use is UBIFS. I have tried several things to mount the filesystem but am still struggling with it. If you have any suggestions, I would be more than glad to listen to them. Feel free to send an email to **alex *[at]* kenchitaru.studio**. It seems that the offsets are still wrong. I also get a CRC error at certain points but I do not think it is due to a bad dump as reading from the chip results in the exact same file everytime.
+Looking further in the hex revealed something else...
+###### **OwO What's This???**
+I have seen some of this info before...
+```
+0x128A830	    61 64 6D 69 6E 5F 69 6B 73 79 6F 6D 75 61 63 31    admin_iksyomuac1
+0x128A840	    33 20 69 6B 73 79 6F 6D 75 61 63 31 33 5F 61 64    3 iksyomuac13_ad
+0x128A850	    6D 69 6E 5F 33 32 30 34 20 48 47 38 30 34 35 2D    min_3204 HG8045-
+0x128A860	    34 30 39 45 2D 62 67 20 62 39 74 74 36 68 72 65    409E-bg b9tt6hre
+0x128A870	    20 48 47 38 30 34 35 2D 34 30 39 45 2D 61 20 62     HG8045-409E-a b
+0x128A880           39 74 74 36 68 72 65 0A 31 18 10 06 F4 6C 4C 35    9tt6hre 1   ôlL5
+```
+```
+admin_iksyomuac13 iksyomuac13_admin_3204 HG8045-409E-bg b9tt6hre HG8045-409E-a b9tt6hre
+```
+**Ah ha! HG8045-409E-bg b9tt6hre and HG8045-409E-a b9tt6hre are the hard-coded default WLAN SSIDs and passwords of the router!**
 
-## To be continued... (please help)
+**But what is admin_iksyomuac13 iksyomuac13_admin_3204? It is the infamous hard-coded Huawei master account!**
+
+Nuro really tried their best to make Huawei deliver a secure router configuration, but yet again the router suffers from an integrated backdoor. Unlike the backdoor master accounts of other Huawei routers and modens, **this master account is unique to the hardware. This means it does not work on other GPON units of the same kind.**
+
+**Or does it?**
+![ONT Information Sticker](img/nse-5954640128799033699-545491-2.jpg)
+**It turns out that the password is derived from the last four digits of the PON MAC. Replacing 3204 (iksyomuac13_admin_XXXX) with the value of your personal unit leads to a successful master account login!**
+
+## Conclusion
+So-net Nuro Hikari's master account for HG8045Q (and maybe other variants, this needs to be tested) is as follows:
+
+#### *Username:* admin_iksyomuac13
+#### *Password:* iksyomuac13_admin_XXXX *(replace with last 4 digits of PON MAC)*
+
+**Before changing any settings, I *highly* recommend making a backup of the configuration file. You can do this by going to "System Tools" > "Configuration File".**
+![Wan Settings](img/cfgbackup.jpg)
+
+What does this master account let us do? For starters, you can now enable the telnet and ssh functionality, on LAN and/or WAN side too if you want (not recommended). You can also configure bridge mode and use your own firewall without double NAT! There are many features that become available to the end-user with this master account like DDNS, etc.
+```
+Starting Nmap 7.80 ( https://nmap.org ) at 2020-09-12 14:32 JST
+Nmap scan report for fpcXXXXXXX.tkycXXX.ap.nuro.jp (XXX.XX.XXX.XXX)
+Host is up (0.011s latency).
+Not shown: 996 closed ports
+PORT   STATE    SERVICE
+22/tcp open  ssh
+23/tcp open  telnet
+53/tcp open  domain
+80/tcp open  http
+
+Nmap done: 1 IP address (1 host up) scanned in 8.36 seconds
+```
+
+*bridge mode settings*
+![Wan Settings](img/bridgemode.jpg)
+
+## Future Endeavours 
+I still want to explore the filesystem of the device. After I enabled telnet and ssh (both are actually the same service), I logged in with the master account credentials and was greeted with a WAP CLI. The available commands are as follows:
+```
+WAP>?
+amp add policy-stats pon
+amp add policy-stats port
+amp add stats gemport
+amp clear policy-stats pon
+amp clear policy-stats port
+amp clear stats gemport
+amp del policy-stats pon
+amp del policy-stats port
+amp del stats gemport
+ampcmd show car all
+ampcmd show car index
+ampcmd show emac stat
+ampcmd show flow all
+ampcmd show flow index
+ampcmd show log
+ampcmd show queue all
+ampcmd show queue index
+ampcmd trace all
+ampcmd trace cli
+ampcmd trace dpoe
+ampcmd trace drv
+ampcmd trace emac
+ampcmd trace emap
+ampcmd trace eth
+ampcmd trace gmac
+ampcmd trace gmap
+ampcmd trace onu
+ampcmd trace optic
+ampcmd trace qos
+bbsp add policy-stats btv
+bbsp clear policy-stats btv all
+bbsp clear policy-stats wan
+bbsp del policy-stats btv
+bbspcmd
+Broadband debug
+Broadband display
+chipdebug
+chipdebug soc drop
+chipdebug soc rx
+chipdebug soc tx
+clear amp pq-stats
+clear file
+clear lastword
+clear pon statistics
+clear poncnt dnstatistic
+clear poncnt gemport upstatistic
+clear poncnt upstatistic
+clear port statistics
+collect debug info
+component delete all
+debug dsp down msg
+debug dsp msg
+debug dsp up msg
+debug ifm
+debug qoscfg
+debug rtp stack
+debug sample mediastar
+debugging dsp diagnose
+debugging dsp para diagnose
+debugging dsp record
+debugging dsp t38diag
+display access mode
+display amp policy-stats pon
+display amp policy-stats port
+display amp pq-stats
+display amp stats gemport
+display apmChipStatus
+display batteryStatus
+display bbsp stats btv
+display bbsp stats wan
+display bmsxml crc
+display boardItem
+display cwmp debug
+display debug info dhcp6c
+display debug info dhcp6s
+display debug info pppoev6
+display debug info ra
+display deviceInfo
+display dhcp_em result
+display dsp channel para
+display dsp channel running status
+display dsp channel status
+display dsp chip stat
+display dsp codec status
+display dsp interrupt stat
+display epon ont info
+display ethoam ma info
+display ethoam md info
+display ethoam mep info
+display ethoam mep perf
+display file
+display filter rf
+display flashlock status
+display flow
+display ftp config status
+display inner version
+display ip6tables filter
+display iptables filter
+display iptables mangle
+display iptables nat
+display iptables raw
+display jb grid status
+display jb para
+display lanmac
+display lastword
+display log info
+display macaddress
+display machineItem
+display memory info
+display msg-queue
+display oaml2shell ethvlan
+display onu info
+display optic
+display optmode
+display patch information
+display pon statistics
+display poncnt dnstatistic
+display poncnt gemport upstatistic
+display poncnt upstatistic
+display portstatistics
+display pppoe_em result
+display productmac
+display progress load
+display rf config
+display rtp stack channel stat
+display rtp stack chip stat
+display rtp stack para
+display rtp stack version
+display sn
+display startup info
+display swm bootstate
+display swm state
+display sysinfo
+display syslog
+display timeout
+display timer
+display usb devList
+display version
+display voip dsp jbdata
+display voip dsp para diagnose state
+display voip dsp para diagnose statistics
+display voip dsp tonedetect
+display wan layer all
+display wanmac
+display wifi multicast
+display wifi pa type
+display wifichip
+display wlanmac
+display zsp version
+get battery alarm status
+get ip conntrack
+get mac agingtime
+get ont oamfrequency
+get opm switch
+get optic debug info
+get optic par info
+get optic phy type
+get optic txmode
+get poncnt upgemport
+get port config
+get port isolate
+get rogue status
+get testself
+get wlan advance
+get wlan associated
+get wlan basic
+get wlan enable
+get wlan stats
+get wlan txpower
+get wlan wps
+ifconfig
+igmp clear statistics
+igmp get debug switch
+igmp get flow info
+igmp get global cfg
+igmp get iptv
+igmp get multilmac
+igmp get port multicast config
+igmp get statistics
+igmp set debug switch
+ip -6 neigh
+ip -6 route
+ip -6 rule
+ip neigh
+ip route
+ip rule
+load pack
+logout
+make ssh hostkey
+mgcp mg-config
+mgcp mgc 1
+mgcp mgc 2
+mid get
+mid off
+mid set
+napt cli
+netstat -na
+oamcmd clear log
+oamcmd debug
+oamcmd error log
+oamcmd pdt show log
+oamcmd show flow
+oamcmd show log
+omcicmd alarm show
+omcicmd clear log
+omcicmd debug
+omcicmd error log
+omcicmd mib show
+omcicmd pdt show log
+omcicmd pm show
+omcicmd show flow
+omcicmd show log
+omcicmd show qos
+ping
+qoscfg get
+quit
+reset
+restore manufactory
+route get default
+save data
+save log
+set cwmp debug
+set ethportmirror
+set led
+set opticdata
+set port isolate
+set ringchk
+set timeout
+set userpasswd
+set voicedebug
+set voicedsploop
+set voicelinetest
+set voiceportloop
+set voicesignalingprint
+setconsole
+stats clear
+stats display
+su
+traceroute
+undo debugging dsp diagnose
+undo debugging dsp para diagnose
+undo debugging dsp record
+undo debugging dsp t38diag
+voice remote diagnose server set
+voice remote diagnose set
+vspa clear rtp statistics
+vspa debug
+vspa display conference info
+vspa display dsp running info
+vspa display dsp state
+vspa display mg if state
+vspa display mg info
+vspa display mgcp config
+vspa display online user info
+vspa display port status
+vspa display rtp statistics
+vspa display service log
+vspa display signal scene info
+vspa display signal scene list
+vspa display user call state
+vspa display user status
+vspa reset
+vspa shutdown mg
+wap list
+wap ps
+wap top
+```
+Four commands were of interest:
+```
+su
+shell (available after su)
+display file
+display startup info
+wap list
+```
+Inputting *su* leads to a "superuser" WAP CLI. Inputting *shell* after this leads to the linux filesystem. Sadly, it seems busybox has been disabled and only two commands are available:
+```
+SU_WAP>shell
+
+BusyBox v1.18.4 (2016-04-17 22:20:48 CST) built-in shell (ash)
+Enter 'help' for a list of built-in commands.
+
+profile close core dump
+WAP(Dopra Linux) # help
+ERROR::Command is not existed
+
+WAP(Dopra Linux) # ?
+exit
+getcustominfo.sh
+WAP(Dopra Linux) #
+```
+
+Returning to the WAP CLI, the *wap list* command allows me to explore the linux filesystem by typing in *wap list path /[path]*:
+```
+SU_WAP>wap list path /
+bin
+boot
+dev
+etc
+html
+lib
+libexec
+linuxrc
+mnt
+proc
+root
+sbin
+share
+sys
+tmp
+uer
+usr
+var
+
+success!
+```
+I was hoping that *display file* could write out the user files to the CLI but I cannot seem to get it to work at the moment... If anyone knows anything about this, feel free to send a message to the aforementioned email.
+
+Finally, I would love to leave you with the command *display startup info* as it shows what **level 2: Accessing the Hardware UART** was supposed to log but I do not wish to leave anything that can identify my specific ONT unit in case of corporate backlash. ;-P
+
