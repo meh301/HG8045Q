@@ -647,3 +647,6 @@ I was hoping that *display file* could write out the user files to the CLI but I
 
 Finally, I would love to leave you with the command *display startup info* as it shows what **level 2: Accessing the Hardware UART** was supposed to log but I do not wish to leave anything that can identify my specific ONT unit in case of corporate backlash. ;-P
 
+In the future, I will quickly demonstrate how you can completely bypass the Huawei hardware and have a direct fibre line to your Pfsense firewall for the ultimate homelab! Such things will most probably be published elsewhere but I will link to them in this article. 
+
+I hope to see others build upon this in Japan!
