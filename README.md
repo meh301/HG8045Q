@@ -293,6 +293,8 @@ admin_iksyomuac13 iksyomuac13_admin_3204 HG8045-409E-bg b9tt6hre HG8045-409E-a b
 Nuro really tried their best to make Huawei deliver a secure router configuration, but yet again the router suffers from an integrated backdoor. Unlike the backdoor master accounts of other Huawei routers and modens, **this master account is unique to the hardware. This means it does not work on other GPON units of the same kind.**
 
 **Or does it?**
+
+*This router is not the one the ISP provided to me, I purchased this one for research purposes from an external source.*
 ![ONT Information Sticker](img/nse-5954640128799033699-545491-2.jpg)
 **It turns out that the password is derived from the last four digits of the PON MAC. Replacing 3204 (iksyomuac13_admin_XXXX) with the value of your personal unit leads to a successful master account login!**
 
