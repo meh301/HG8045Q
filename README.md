@@ -1,6 +1,8 @@
 # PWNED: HG8045Q
 This is an ongoing project aimed at reverse engineering modern Huawei ONT implementations to evaluate their security.
 
+**I do not bear responsibility for any potential damages that may occur due to information written in this article. All presented information is only my personal observation. Precautions should be taken if you wish to reproduce the depicted results.**
+
 The target hardware in this publication is commonly distributed by Japanese ISP [So-Net](https://www.so-net.ne.jp) under the [Nuro](https://www.nuro.jp/hikari/) name.
 
 The Huawei Echolife HG8045Q and similar variants is a 2gbps-capable (1gbps upload) GPON modem & router with many of its features locked down by the provider, with the most important of these *unavailable* features being Bridge mode. Furthermore, although the router is capable of speeds in excess of 1gbps on the fibre ONT input, none of its RJ45 ports are rated for anything higher than 1gbps. This is somewhat a shame for more advanced users who might want to use their own higher performance firewalls like pfsense or other deployments. The official manual outlining its features (in Japanese) can be found [here](https://www.nuro.jp/pdf/device/manual_HG8045Q.pdf).
