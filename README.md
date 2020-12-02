@@ -1,7 +1,7 @@
 # PWNED: HG8045Q
 This is an ongoing project aimed at reverse engineering modern Huawei ONT implementations to evaluate their security.
 
-## Note for those reading the news articles with this page quoted: among the other ONU provided by Nuro (ZTE F660A) has also been hacked and presents a greater security risk than the HG8045Q. Also please note that ALL OF THE ONU AND ROUTERS PROVIDED BY ALL JAPANESE INTERNET PROVIDERS ARE ALL VULNERABLE IN SOME WAY. THIS IS THE HARSH REALITY OF CONSUMER INTERNET HARDWARE.
+## Note for those reading the news articles with this page quoted: among the other ONU provided by Nuro (ZTE F660A) has also been hacked and presents a greater security risk than the HG8045Q. Also please note that ALL OF THE ONU AND ROUTERS PROVIDED BY ALL JAPANESE (and the rest of the world) INTERNET PROVIDERS ARE ALL VULNERABLE IN SOME WAY. THIS IS THE HARSH REALITY OF CONSUMER INTERNET HARDWARE.
 
 **I do not bear responsibility for any potential damages that may occur due to information written in this article. All presented information is only my personal observation. Precautions should be taken if you wish to reproduce the depicted results.**
 
